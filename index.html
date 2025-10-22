@@ -1,1 +1,248 @@
-<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Träningsappen v4.0</title></head><body><h1>Träningsappen v4.0</h1><p>Full package - open index.html to run the app.</p></body></html>
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Träningsappen</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #f1f1f1;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #1f1f1f;
+            text-align: center;
+            padding: 10px 0;
+            border-bottom: 2px solid #ff4b2b;
+        }
+        header img {
+            height: 60px;
+        }
+        nav {
+            display: flex;
+            justify-content: space-around;
+            background-color: #222;
+            padding: 10px;
+        }
+        nav button {
+            background: #ff4b2b;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        nav button:hover {
+            background: #ff7043;
+        }
+        section {
+            padding: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        input, select {
+            padding: 5px;
+            margin: 5px;
+            border-radius: 5px;
+            border: none;
+        }
+        .exercise-card {
+            background: #1f1f1f;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .stat-box {
+            background: #1f1f1f;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .btn-small {
+            background: #333;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="https://i.imgur.com/dmJ8UIR.png" alt="Träningsappen logga" />
+        <h1>Träningsappen</h1>
+    </header>
+
+    <nav>
+        <button onclick="showTab('bank')">Övningsbank</button>
+        <button onclick="showTab('logg')">Logga pass</button>
+        <button onclick="showTab('stat')">Statistik</button>
+        <button onclick="showTab('settings')">Inställningar</button>
+    </nav>
+
+    <section id="bank">
+        <h2>Övningsbank</h2>
+        <div id="exercise-list"></div>
+    </section>
+
+    <section id="logg" class="hidden">
+        <h2>Logga träningspass</h2>
+        <select id="program-select"></select>
+        <div id="workout-display"></div>
+    </section>
+
+    <section id="stat" class="hidden">
+        <h2>Statistik</h2>
+        <div id="stats"></div>
+    </section>
+
+    <section id="settings" class="hidden">
+        <h2>Inställningar</h2>
+        <button onclick="exportData()">Exportera data</button>
+        <input type="file" id="importFile" accept=".json" onchange="importData(event)" />
+        <p>Exportera eller importera dina sparade träningsloggar.</p>
+    </section>
+
+    <script>
+        const programs = {
+            'Dag 1 – Bröst': [
+                {name: 'Bänkpress', muscle: 'Bröst'},
+                {name: 'Hantelpress', muscle: 'Bröst'},
+                {name: 'Cable crossover', muscle: 'Bröst'}
+            ],
+            'Dag 2 – Rygg': [
+                {name: 'Marklyft', muscle: 'Rygg'},
+                {name: 'Sittande rodd', muscle: 'Rygg'},
+                {name: 'Latsdrag', muscle: 'Rygg'}
+            ],
+            'Dag 3 – Ben & Mage': [
+                {name: 'Knäböj', muscle: 'Ben'},
+                {name: 'Benspark', muscle: 'Ben'},
+                {name: 'Crunches', muscle: 'Mage'}
+            ],
+            'Dag 4 – Axlar': [
+                {name: 'Militärpress', muscle: 'Axlar'},
+                {name: 'Hantellyft åt sidan', muscle: 'Axlar'},
+                {name: 'Omvänd pec deck', muscle: 'Axlar'}
+            ],
+            'Dag 5 – Armar': [
+                {name: 'Bicepscurl med skivstång', muscle: 'Biceps'},
+                {name: 'Hantelcurl', muscle: 'Biceps'},
+                {name: 'Triceps pushdown', muscle: 'Triceps'},
+                {name: 'Smala armhävningar', muscle: 'Triceps'}
+            ]
+        };
+
+        let logData = JSON.parse(localStorage.getItem('trainingLog')) || {};
+
+        function showTab(tab) {
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(tab).classList.remove('hidden');
+            if (tab === 'bank') loadExercises();
+            if (tab === 'logg') loadPrograms();
+            if (tab === 'stat') updateStats();
+        }
+
+        function loadExercises() {
+            const list = document.getElementById('exercise-list');
+            list.innerHTML = '';
+            Object.keys(programs).forEach(day => {
+                const header = document.createElement('h3');
+                header.textContent = day;
+                list.appendChild(header);
+                programs[day].forEach(ex => {
+                    const div = document.createElement('div');
+                    div.className = 'exercise-card';
+                    div.textContent = `${ex.name} (${ex.muscle})`;
+                    list.appendChild(div);
+                });
+            });
+        }
+
+        function loadPrograms() {
+            const select = document.getElementById('program-select');
+            select.innerHTML = '<option>Välj program</option>';
+            Object.keys(programs).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p;
+                select.appendChild(opt);
+            });
+            select.onchange = () => showProgram(select.value);
+        }
+
+        function showProgram(p) {
+            const disp = document.getElementById('workout-display');
+            disp.innerHTML = '';
+            if (!programs[p]) return;
+            programs[p].forEach(ex => {
+                const div = document.createElement('div');
+                div.className = 'exercise-card';
+                div.innerHTML = `<strong>${ex.name}</strong> (${ex.muscle})<br>
+                    Vikt (kg): <input id="w_${ex.name}" type="number" min="0" value="${getPrev(ex.name,'w')}">
+                    Reps: <input id="r_${ex.name}" type="number" min="0" value="${getPrev(ex.name,'r')}">
+                    <button class="btn-small" onclick="save('${ex.name}')">Spara</button>`;
+                disp.appendChild(div);
+            });
+        }
+
+        function save(exName) {
+            const w = document.getElementById(`w_${exName}`).value;
+            const r = document.getElementById(`r_${exName}`).value;
+            if (!logData[exName]) logData[exName] = [];
+            logData[exName].push({ weight: w, reps: r, date: new Date().toLocaleDateString() });
+            localStorage.setItem('trainingLog', JSON.stringify(logData));
+            alert('Sparat!');
+        }
+
+        function getPrev(exName, type) {
+            const data = logData[exName];
+            if (!data || data.length === 0) return '';
+            const last = data[data.length - 1];
+            return type === 'w' ? last.weight : last.reps;
+        }
+
+        function updateStats() {
+            const stats = document.getElementById('stats');
+            stats.innerHTML = '';
+            Object.keys(logData).forEach(ex => {
+                const arr = logData[ex];
+                if (arr.length > 0) {
+                    const div = document.createElement('div');
+                    div.className = 'stat-box';
+                    const last = arr[arr.length - 1];
+                    div.innerHTML = `<strong>${ex}</strong><br>
+                        Senaste: ${last.weight} kg × ${last.reps} reps (${last.date})<br>
+                        Totalt loggar: ${arr.length}`;
+                    stats.appendChild(div);
+                }
+            });
+        }
+
+        function exportData() {
+            const data = JSON.stringify(logData);
+            const blob = new Blob([data], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'traningsappen_data.json';
+            a.click();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                logData = JSON.parse(e.target.result);
+                localStorage.setItem('trainingLog', JSON.stringify(logData));
+                alert('Data importerad!');
+            };
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
